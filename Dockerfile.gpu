@@ -34,7 +34,8 @@ ENV BODY_SIZE_LIMIT=0
 RUN pnpm run build
 
 # Base container
-FROM nvidia/cuda:11.8.0-cudnn8-runtime-ubuntu22.04 as base
+# FROM nvidia/cuda:11.8.0-cudnn8-runtime-ubuntu22.04 as base
+FROM nvidia/cuda:12.3.2-cudnn9-runtime-ubuntu22.04 as base
 
 ENV PYTHON_VERSION=3.10
 
