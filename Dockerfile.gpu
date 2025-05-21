@@ -22,8 +22,14 @@ FROM node:alpine AS frontend
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
 RUN corepack enable
-COPY ./frontend /app
+# COPY ./frontend /app
 WORKDIR /app
+
+###
+COPY ./frontend/package.json ./frontend/pnpm-lock.yaml ./
+# Ensure correct pnpm version is activated from packageManager field
+RUN corepack prepare pnpm@10.11.0 --activate
+###
 
 FROM frontend AS frontend-prod-deps
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --prod --frozen-lockfile
