@@ -25,6 +25,9 @@ RUN corepack enable
 COPY ./frontend /app
 WORKDIR /app
 
+# Preconfigure the right pnpm version
+RUN corepack prepare pnpm@8.6.0 --activate
+
 FROM frontend AS frontend-prod-deps
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --prod --frozen-lockfile
 
