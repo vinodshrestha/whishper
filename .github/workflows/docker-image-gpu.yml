@@ -3,6 +3,7 @@ name: Whishper GPU Docker Image
 on:
   release:
     types: [published]
+  workflow_dispatch:  # Allows manual triggering of the workflow
 
 jobs:
   build:
