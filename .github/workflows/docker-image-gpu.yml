@@ -42,6 +42,7 @@ jobs:
           file: ./Dockerfile.gpu
           platforms: linux/amd64,linux/arm64
           push: true
+          no-cache: true
           tags: |
             ${{ format('{0}/whishper:{1}-gpu', secrets.DOCKERHUB_USERNAME, github.event.release.tag_name) }}
             ${{ format('{0}/whishper:latest-gpu', secrets.DOCKERHUB_USERNAME) }}
