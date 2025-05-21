@@ -19,12 +19,6 @@ jobs:
           sudo rm -rf /usr/local/lib/android /opt/ghc /usr/local/share/powershell /usr/share/swift /usr/local/.ghcup /usr/lib/jvm || true
           echo "some directories deleted"
 
-      - name: Enable Corepack
-        run: corepack enable
-
-      - name: Set pnpm version
-        run: corepack prepare pnpm@8.6.0 --activate
-
       - name: Checkout
         uses: actions/checkout@v4
 
@@ -48,7 +42,6 @@ jobs:
           file: ./Dockerfile.gpu
           platforms: linux/amd64,linux/arm64
           push: true
-          no-cache: true
           tags: |
             ${{ format('{0}/whishper:{1}-gpu', secrets.DOCKERHUB_USERNAME, github.event.release.tag_name) }}
             ${{ format('{0}/whishper:latest-gpu', secrets.DOCKERHUB_USERNAME) }}
