@@ -1,3 +1,6 @@
+#---------------------------------------------------
+# Backend setup
+#---------------------------------------------------
 # YT-DLP Download and setup
 FROM --platform=$BUILDPLATFORM golang:bookworm AS ytdlp_cache
 ARG TARGETOS
@@ -6,8 +9,7 @@ RUN apt update && apt install -y wget
 RUN wget https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -O /usr/local/bin/yt-dlp
 RUN chmod a+rx /usr/local/bin/yt-dlp
 
-# Backend setup
-FROM devopsworks/golang-upx:latest AS backend-builder
+FROM devopsworks/golang-upx:1.23 AS backend-builder
 
 ENV DEBIAN_FRONTEND noninteractive
 WORKDIR /app
@@ -17,19 +19,15 @@ RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o whishper . && \
     upx whishper
 RUN chmod a+rx whishper
 
+#---------------------------------------------------
 # Frontend setup
+#---------------------------------------------------
 FROM node:alpine AS frontend
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
 RUN corepack enable
-# COPY ./frontend /app
+COPY ./frontend /app
 WORKDIR /app
-
-###
-COPY ./frontend/package.json ./frontend/pnpm-lock.yaml ./
-# Ensure correct pnpm version is activated from packageManager field
-RUN corepack prepare pnpm@10.11.0 --activate
-###
 
 FROM frontend AS frontend-prod-deps
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --prod --frozen-lockfile
@@ -39,11 +37,12 @@ RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile
 ENV BODY_SIZE_LIMIT=0
 RUN pnpm run build
 
+#---------------------------------------------------
 # Base container
-# FROM nvidia/cuda:11.8.0-cudnn8-runtime-ubuntu22.04 as base
-FROM nvidia/cuda:12.8.1-cudnn-runtime-ubuntu22.04 AS base
+#---------------------------------------------------
+FROM nvidia/cuda:12.9.0-cudnn-runtime-ubuntu24.04
 
-ENV PYTHON_VERSION=3.10
+ENV PYTHON_VERSION=3.12
 
 RUN export DEBIAN_FRONTEND=noninteractive \
     && apt-get -qq update \
@@ -52,26 +51,40 @@ RUN export DEBIAN_FRONTEND=noninteractive \
     python${PYTHON_VERSION}-venv \
     python3-pip \
     ffmpeg \
-    curl wget xz-utils \
-    ffmpeg nginx supervisor \
+    curl \
+    pkg-config \
+    python3-dev \
+    libavformat-dev \
+    libavcodec-dev \
+    libavdevice-dev \
+    libavutil-dev \
+    libavfilter-dev \
+    libswscale-dev \
+    libswresample-dev \
+    wget \
     && rm -rf /var/lib/apt/lists/*
 
-RUN ln -s -f /usr/bin/python${PYTHON_VERSION} /usr/bin/python3 && \
-    ln -s -f /usr/bin/python${PYTHON_VERSION} /usr/bin/python && \
-    ln -s -f /usr/bin/pip3 /usr/bin/pip
+# Create and activate a virtual environment
+RUN python3 -m venv /opt/venv
+ENV VIRTUAL_ENV=/opt/venv
+ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 
-# Python service setup
 COPY ./transcription-api /app/transcription
 WORKDIR /app/transcription
-RUN pip install -r requirements.txt && \
-    pip install python-multipart && \
-    pip3 install torch --index-url https://download.pytorch.org/whl/cu118
+
+RUN pip3 install -r requirements.txt \
+    && pip3 install python-multipart \
+    && pip3 install torch --index-url https://download.pytorch.org/whl/cu118
  
+#---------------------------------------------------
 # Node.js service setup
-RUN wget https://nodejs.org/dist/v20.9.0/node-v20.9.0-linux-x64.tar.xz && \
-    tar -xf node-v20.9.0-linux-x64.tar.xz && \
-    mv node-v20.9.0-linux-x64 /usr/local/lib/node && \
-    rm node-v20.9.0-linux-x64.tar.xz
+# Install wget and xz-utils if they're not already present
+RUN apt-get update && apt-get install -y wget xz-utils --no-install-recommends
+
+RUN wget https://nodejs.org/dist/v22.16.0/node-v22.16.0-linux-x64.tar.xz && \
+    tar -xf node-v22.16.0-linux-x64.tar.xz && \
+    mv node-v22.16.0-linux-x64 /usr/local/lib/node && \
+    rm node-v22.16.0-linux-x64.tar.xz
 ENV PATH="/usr/local/lib/node/bin:${PATH}"
 
 ENV BODY_SIZE_LIMIT=0
